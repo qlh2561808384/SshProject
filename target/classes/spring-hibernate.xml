@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context-4.0.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+        ">
+    <!--第一步：   首先引入config.properties文件，因为你要连接数据库，必须第一个先引入数据库的配置文件-->
+    <context:property-placeholder location="classpath:config.properties"/>
+<!--    <context:component-scan base-package="com"/>-->
+
+    <!--数据库连接密码加密-->
+    <!--    <bean id="dbPasswordCallback" class="com.datanew.util.DBPasswordCallback" lazy-init="true"/>-->
+
+    <!--第二步，配置数据源-->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+    <!-- 配置文件从本地文件系统中读取，应用场景为集群时使用，也可以配置成远程的地址 -->
+    <!-- <property name="connectionProperties" value="config.file=file:///home/admin/druid-pool.properties" /> -->
+
+    <!-- 数据库配置 -->
+    <property name="driverClassName" value="${jdbc.driver}" />
+    <property name="url" value="${jdbc.url}" />
+    <property name="username" value="${jdbc.username}" />
+    <property name="password" value="${jdbc.password}" />
+    <property name="filters" value="stat,log4j" />
+    <property name="initialSize" value="10" />
+    <property name="minIdle" value="10" />
+<!--    数据库最大链接数-->
+    <property name="maxActive" value="${hibernate.maxActive}" />
+    <property name="maxWait" value="60000" />
+    <property name="timeBetweenEvictionRunsMillis" value="60000" />
+    <property name="minEvictableIdleTimeMillis" value="300000" />
+    <property name="maxOpenPreparedStatements" value="2500" />
+    <property name="removeAbandoned" value="true" /> <!-- 打开removeAbandoned功能 -->
+    <property name="removeAbandonedTimeout" value="18000" /> <!-- 1800秒，也就是30分钟 -->
+    <property name="logAbandoned" value="true" /> <!-- 关闭abanded连接时输出错误日志 -->
+<!--    <property name="passwordCallback" ref="dbPasswordCallback"/>数据库连接密码加密-->
+    <property name="connectProperties">
+        <props>
+            <prop key="remarksReporting">true</prop>
+        </props>
+    </property>
+</bean>
+
+    <!-- 第三步   配置hibernate的SessionFactory -->
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+        <!--        注入数据源-->
+        <property name="dataSource" ref="dataSource"/>
+        <!-- 然后就是奖我们写的sql 转换成hibernate能识别的     那就是配置hibernate方言信息 -->
+        <property name="hibernateProperties">
+            <props>
+                <prop key="hibernate.dialect">${hibernate.dialect}</prop>
+                <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+                <prop key="hibernate.format_sql">${hibernate.format_sql}</prop>
+                <prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>
+            </props>
+        </property>
+
+        <!--    包扫描的方式加载注解实体类bean-->
+        <property name="packagesToScan" value="com.longshao.model">
+           <!-- <list>
+                <value>com.longshao.model</value>&lt;!&ndash; 注意路径，要往上一层 &ndash;&gt;
+            </list>-->
+        </property><!-- 注意路径，要往上一层 -->
+    </bean>
+
+    <!--    第四步  让sessionFactory 注入daoimpl  相当于奖ref里面的东西set到class的属性里面  class就得到这个属性值了-->
+    <bean id="BaseDao" class="com.longshao.dao.impl.BaseDaoImpl">
+        <property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
+
+    <!--    第五步   管理事务-->
+    <!--    注：这是作为公共使用的事务管理器Bean。这个会是事先配置好的，不需各个模块各自去配。-->
+    <!--    下面就开始配置各个模块所必须的部分，在各自的applicationContext-XXX-beans.xml配置的对于事务管理的详细信息。-->
+    <bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
+
+    <!-- 第六步  配置事务传播特性 -->
+    <!-- 配置事务增强处理Bean，指定事务管理器 -->
+    <tx:advice id="transactionAdvice" transaction-manager="transactionManager">
+        <!-- 配置详细事务处理语义 -->
+        <tx:attributes>
+          <!--  如<tx:method name="save*" propagation="REQUIRED"/>
+            其中*为通配符，即代表以save为开头的所有方法，即表示符合此命名规则的方法作为一个事务。
+            propagation="REQUIRED"代表支持当前事务，如果当前没有事务，就新建一个事务。这是最常见的选择。-->
+            <tx:method name="insert*" propagation="REQUIRED" rollback-for="java.lang.Exception" />
+            <tx:method name="update*" propagation="REQUIRED" rollback-for="java.lang.Exception" />
+            <tx:method name="delete*" propagation="REQUIRED" rollback-for="java.lang.Exception" />
+            <tx:method name="save*" propagation="REQUIRED" rollback-for="java.lang.Exception" />
+            <tx:method name="uploader" propagation="REQUIRED" rollback-for="java.lang.Exception" />
+            <tx:method name="submit" propagation="REQUIRED" rollback-for="java.lang.Exception" />
+            <tx:method name="add*" propagation="REQUIRED" />
+            <!--            PROPAGATION_REQUIRED&#45;&#45;支持当前事务，如果当前没有事务，就新建一个事务。这是最常见的选择。-->
+            <!--            PROPAGATION_MANDATORY&#45;&#45;支持当前事务，如果当前没有事务，就抛出异常。-->
+            <!--            PROPAGATION_REQUIRES_NEW&#45;&#45;新建事务，如果当前存在事务，把当前事务挂起。-->
+            <!--            PROPAGATION_NOT_SUPPORTED&#45;&#45;以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。-->
+            <!--            PROPAGATION_NEVER&#45;&#45;以非事务方式执行，如果当前存在事务，则抛出异常。-->
+            <!--            PROPAGATION_NESTED&#45;&#45;如果当前存在事务，则在嵌套事务内执行。如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。-->
+
+            <!--            PROPAGATION_SUPPORTS&#45;&#45;支持当前事务，如果当前没有事务，就以非事务方式执行。-->
+            <tx:method name="load*" propagation="SUPPORTS" read-only="true" />
+            <tx:method name="get*" propagation="SUPPORTS" read-only="true" />
+            <tx:method name="find*" propagation="SUPPORTS" read-only="true" />
+            <tx:method name="select*" propagation="SUPPORTS" read-only="true" />
+            <!-- 其他采用只读事务方式 -->
+            <tx:method name="*" propagation="SUPPORTS" read-only="true" />
+        </tx:attributes>
+    </tx:advice>
+
+    <!--    第七步  配置参与事务的类  一般是service层处理事务的 -->
+    <aop:config>
+      	<!-- Spring aop事务管理 -->
+        <!-- 配置切入点 -->
+<!--        其中第一个*代表返回值，第二*代表service下子包，第三个*代表方法名，“（..）”代表方法参数。-->
+        <aop:pointcut id="transactionPointcut" expression="execution(* com.longshao.service.*Impl.*(..))" />
+        <!-- 指定在txAdvice切入点应用txAdvice事务增强处理 -->
+        <aop:advisor pointcut-ref="transactionPointcut" advice-ref="transactionAdvice" />
+    </aop:config>
+
+    <!--    有一个 proxy-target-class属性，默认为false,表示使用JDK动态代理技术织入增强；-->
+    <!--    当配置为<aop:aspectj-autoproxy proxy-target-class="true"/>时，表示使用CGLIB动态代理技术织入增强。-->
+    <!--    不过即使proxy-target-class设置为false，如果目标类没有声明接口，则Spring将自动使用CGLIB动态代理。-->
+    <!--      代理模式   true 表示使用CGLIB代理 -->
+    <aop:aspectj-autoproxy proxy-target-class="true" />
+
+</beans>
