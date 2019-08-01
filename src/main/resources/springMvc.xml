@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans-4.1.xsd
+		http://www.springframework.org/schema/context
+		http://www.springframework.org/schema/context/spring-context-4.1.xsd
+		http://www.springframework.org/schema/mvc
+		http://www.springframework.org/schema/mvc/spring-mvc-4.1.xsd
+		http://www.springframework.org/schema/tx
+		http://www.springframework.org/schema/tx/spring-tx-4.1.xsd
+		http://www.springframework.org/schema/aop
+		http://www.springframework.org/schema/aop/spring-aop-4.1.xsd">
+    <!--    自动扫描注解 注入为bean-->
+    <context:component-scan base-package="com"/>
+                                                            <!--        处理器映射器，处理器适配器-->
+    <!--
+          注解代替
+        &lt;!&ndash; 处理器映射器 &ndash;&gt;
+        <bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping"/>
+        &lt;!&ndash; 处理器适配器 &ndash;&gt;
+        <bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter"/>
+        前端控制器加载之后  自动加载RequestMappingHandlerMapping和RequestMappingHandlerAdapter这两个类;
+        当我们使用controller的注解类，使用requestMapping的注解方法。那么项目运行起来，前端控制器加载之后，就会默认的加载了处理器映射器
+     -->
+    <mvc:annotation-driven/>
+                                                            <!--    视图解析器-->
+    <!--    就是会在返回的所有的视图路径上自动加上前缀和后缀-->
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+        <property name="prefix" value="/"/>
+        <property name="suffix" value=".jsp"/>
+    </bean>
+</beans>
+
